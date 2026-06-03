@@ -8,11 +8,16 @@ Then use build_scripts/build_mac.sh (or build_win.ps1) to bundle dylibs and pack
 
 import sys
 from pathlib import Path
+from PyInstaller.utils.hooks import collect_data_files
 
 ROOT = Path(".").resolve()
 
 # ── data files to bundle ──────────────────────────────────────────────────────
-datas = [
+datas = (
+    # cmudict data — uses importlib.resources so collect_data_files is required
+    collect_data_files("cmudict")
+)
+datas += [
     # soundfont
     (str(ROOT / "assets" / "sfz" / "VintageDreams.sf2"), "assets/sfz"),
     # logo
@@ -20,9 +25,10 @@ datas = [
     # NRC emotion lexicon (bypasses NLTK dependency)
     (str(ROOT / ".venv" / "lib" / "python3.13" / "site-packages" / "nrclex" / "data" / "nrc_en.json"),
      "nrclex/data"),
-    # VADER lexicon
+    # VADER lexicon + emoji lexicon
     (str(ROOT / ".venv" / "lib" / "python3.13" / "site-packages" / "vaderSentiment"),
      "vaderSentiment"),
+    # pronouncing — no data of its own; cmudict above covers its dict
     # wizard / audio / generator source packages
     (str(ROOT / "wizard"),    "wizard"),
     (str(ROOT / "audio"),     "audio"),
@@ -49,6 +55,7 @@ a = Analysis(
         "vaderSentiment",
         "vaderSentiment.vaderSentiment",
         "pronouncing",
+        "cmudict",
         "pydub",
         "pydub.effects",
         "wizard.steps",

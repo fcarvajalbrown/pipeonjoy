@@ -44,13 +44,15 @@ try:
     from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
     _vader = SentimentIntensityAnalyzer()
     HAS_VADER = True
-except ImportError:
+except Exception:
     HAS_VADER = False
 
 try:
     import pronouncing
+    # force-load the CMU dict now so we know immediately if the data file is missing
+    pronouncing.phones_for_word("test")
     HAS_PRONOUNCING = True
-except ImportError:
+except Exception:
     HAS_PRONOUNCING = False
 
 

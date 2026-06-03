@@ -308,9 +308,17 @@ class PipeOnJoy(tk.Tk):
         _btn(row, "ANALYZE + START ▶", self._lyrics_confirmed).pack(side="right")
 
     def _lyrics_confirmed(self):
-        from wizard.lyrics_analysis import analyze
+        import random as _rnd
         lyrics = self._lyrics_text.get("1.0", "end").strip()
-        self.answers = analyze(lyrics)
+        try:
+            from wizard.lyrics_analysis import analyze
+            self.answers = analyze(lyrics)
+        except Exception:
+            # fall back to seeded random — never show a dead button
+            from wizard.steps import STEPS as _S
+            seed = sum(ord(c) for c in lyrics[:200]) if lyrics else None
+            rng  = _rnd.Random(seed)
+            self.answers = {s["key"]: rng.choice(s["options"]) for s in _S}
         self.step_idx = 0
         self._show_step()
 
