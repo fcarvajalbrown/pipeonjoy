@@ -15,6 +15,12 @@ from pathlib import Path
 
 # ── NRC lexicon — direct load, no TextBlob/NLTK needed ───────────────────────
 def _find_nrc_json() -> Path | None:
+    import sys
+    # frozen bundle: PyInstaller places datas at _MEIPASS/nrclex/data/nrc_en.json
+    if getattr(sys, "frozen", False):
+        p = Path(sys._MEIPASS) / "nrclex" / "data" / "nrc_en.json"
+        return p if p.exists() else None
+    # dev mode: search .venv
     for p in Path(__file__).parents:
         cand = p / ".venv" / "lib"
         if cand.exists():

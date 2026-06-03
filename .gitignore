@@ -10,3 +10,9 @@ outputs/
 *.mid
 *.wav
 *.mp3
+
+# PyInstaller
+build/
+dist/
+*.spec.bak
+build_scripts/win_libs/

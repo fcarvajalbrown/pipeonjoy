@@ -6,12 +6,24 @@ import tkinter as tk
 from tkinter import messagebox
 from pathlib import Path
 
+# ── frozen-bundle path resolution (must run before any other import) ──────────
+def _bundle_dir() -> Path:
+    """Return the directory that contains bundled assets at runtime."""
+    if getattr(sys, "frozen", False):
+        return Path(sys._MEIPASS)          # PyInstaller bundle
+    return Path(__file__).parent
+
+BUNDLE_DIR = _bundle_dir()
+
+# macOS: help the dynamic linker find libfluidsynth inside the bundle
+# or fall back to the Homebrew install path for dev mode
+_lib_dirs = [str(BUNDLE_DIR / "lib"), "/opt/homebrew/lib", "/usr/local/lib"]
+os.environ["DYLD_LIBRARY_PATH"]          = ":".join(_lib_dirs)
+os.environ["DYLD_FALLBACK_LIBRARY_PATH"] = ":".join(_lib_dirs)
+
 from wizard.release import create_output_folder, suggest_track_count
 from wizard.sample_analysis import launch_sample_tool
 from wizard.steps import STEPS, QUICK_KEYS
-
-# help macOS find the Homebrew FluidSynth dylib
-os.environ.setdefault("DYLD_LIBRARY_PATH", "/opt/homebrew/lib")
 
 # ── single-instance lock ──────────────────────────────────────────────────────
 LOCKFILE = Path(os.environ.get("TMPDIR", "/tmp")) / "pipeonjoy.lock"

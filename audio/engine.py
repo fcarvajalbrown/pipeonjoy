@@ -74,12 +74,17 @@ def _root_midi(root: str) -> int:
 
 # ── soundfont locator ─────────────────────────────────────────────────────────
 def _find_sf2() -> Path | None:
-    root = Path(__file__).parents[1]
+    # frozen bundle: assets are relative to _MEIPASS
+    if getattr(sys, "frozen", False):
+        base = Path(sys._MEIPASS)
+    else:
+        base = Path(__file__).parents[1]
+
     for name in ("VintageDreams.sf2", "GeneralUser_GS.sf2"):
-        p = root / "assets" / "sfz" / name
+        p = base / "assets" / "sfz" / name
         if p.exists() and p.stat().st_size > 50_000:
             return p
-    # Homebrew bundle
+    # dev mode: also search Homebrew Cellar
     hw = Path("/opt/homebrew/Cellar/fluid-synth")
     if hw.exists():
         hits = sorted(hw.rglob("VintageDreamsWaves-v2.sf2"))
