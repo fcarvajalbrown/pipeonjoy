@@ -51,20 +51,25 @@ echo "▶ Patching rpath (install_name_tool)..."
 
 patch_binary() {
     local target="$1"
-    for dylib in "${DYLIBS[@]}"; do
-        local basename
-        basename="$(basename "$dylib")"
-        local new_ref="@executable_path/../Frameworks/$basename"
+    # Strip existing signature so install_name_tool can modify the binary.
+    # PyInstaller signs the executable during build; install_name_tool refuses
+    # to touch signed binaries on newer macOS.
+    codesign --remove-signature "$target" 2>/dev/null || true
 
-        # Replace absolute Homebrew paths with @executable_path-relative refs
-        # Try both /opt/homebrew and /usr/local prefixes
-        for prefix in "$BREW" "/usr/local" "/opt/homebrew"; do
-            local old
-            old="$(otool -L "$target" 2>/dev/null | awk '{print $1}' | grep "${basename}$" | head -1)"
-            if [ -n "$old" ]; then
-                install_name_tool -change "$old" "$new_ref" "$target" 2>/dev/null || true
-            fi
-        done
+    for dylib in "${DYLIBS[@]}"; do
+        local bname
+        bname="$(basename "$dylib")"
+        local new_ref="@executable_path/../Frameworks/$bname"
+
+        # Use awk (not grep) so a no-match doesn't trigger set -eo pipefail
+        local old
+        old="$(otool -L "$target" 2>/dev/null \
+              | awk -v b="$bname" '$1 ~ b"$" {print $1}' \
+              | head -1 || true)"
+
+        if [ -n "$old" ] && [ "$old" != "$new_ref" ]; then
+            install_name_tool -change "$old" "$new_ref" "$target" 2>/dev/null || true
+        fi
     done
 }
 
