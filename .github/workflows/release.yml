@@ -1,0 +1,96 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build (e.g. v0.1.0)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  # ── macOS .app + .dmg ───────────────────────────────────────────────────────
+  build-macos:
+    runs-on: macos-latest   # ARM64 (M1) runner
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install system deps
+        run: brew install fluid-synth create-dmg
+
+      - name: Create venv and install deps
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install --upgrade pip --quiet
+          pip install -e ".[dev]" pyinstaller --quiet
+
+      - name: Build .app + .dmg
+        run: bash build_scripts/build_mac.sh
+
+      - name: Rename artifacts with version
+        run: |
+          TAG="${GITHUB_REF_NAME:-${{ inputs.tag }}}"
+          cd dist
+          [ -f pipeonjoy.dmg ] && mv pipeonjoy.dmg "pipeonjoy-${TAG}-mac-arm64.dmg"
+          zip -r "pipeonjoy-${TAG}-mac-arm64.zip" pipeonjoy.app -x "*.DS_Store" -q
+
+      - name: Attach to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name || inputs.tag }}
+          fail_on_unmatched_files: false
+          files: |
+            dist/pipeonjoy-*-mac-arm64.dmg
+            dist/pipeonjoy-*-mac-arm64.zip
+
+  # ── Windows .exe ────────────────────────────────────────────────────────────
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python deps
+        run: pip install -e ".[dev]" pyinstaller --quiet
+
+      - name: Download FluidSynth Windows binary
+        shell: pwsh
+        run: |
+          $url = "https://github.com/FluidSynth/fluidsynth/releases/download/v2.3.4/fluidsynth-2.3.4-win10-x64.zip"
+          Invoke-WebRequest -Uri $url -OutFile fluidsynth-win.zip -UseBasicParsing
+          Expand-Archive fluidsynth-win.zip -DestinationPath fluidsynth-release
+          New-Item -ItemType Directory -Force -Path build_scripts\win_libs | Out-Null
+          Get-ChildItem -Path fluidsynth-release -Recurse -Filter "*.dll" |
+            Copy-Item -Destination build_scripts\win_libs\
+          Write-Host "Bundled DLLs:"
+          Get-ChildItem build_scripts\win_libs\*.dll | Select-Object -ExpandProperty Name
+
+      - name: Build .exe
+        shell: pwsh
+        run: pyinstaller pipeonjoy.spec --noconfirm --clean
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $tag = if ($env:GITHUB_REF_NAME) { $env:GITHUB_REF_NAME } else { "${{ inputs.tag }}" }
+          Compress-Archive -Path dist\pipeonjoy.exe `
+            -DestinationPath "dist\pipeonjoy-${tag}-windows-x64.zip"
+
+      - name: Attach to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name || inputs.tag }}
+          files: dist/pipeonjoy-*-windows-x64.zip

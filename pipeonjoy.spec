@@ -7,10 +7,18 @@ Then use build_scripts/build_mac.sh (or build_win.ps1) to bundle dylibs and pack
 """
 
 import sys
+import glob as _glob
 from pathlib import Path
 from PyInstaller.utils.hooks import collect_data_files
 
 ROOT = Path(".").resolve()
+
+# ── Windows: pick up FluidSynth DLLs placed in build_scripts/win_libs/ ───────
+_win_binaries = []
+if sys.platform == "win32":
+    _win_libs = ROOT / "build_scripts" / "win_libs"
+    if _win_libs.exists():
+        _win_binaries = [(str(dll), ".") for dll in _win_libs.glob("*.dll")]
 
 # ── data files to bundle ──────────────────────────────────────────────────────
 datas = (
@@ -39,7 +47,9 @@ datas += [
 a = Analysis(
     [str(ROOT / "main.py")],
     pathex=[str(ROOT)],
-    binaries=[],          # dylibs injected by build_mac.sh after this step
+    # macOS: binaries injected by build_mac.sh after PyInstaller runs
+    # Windows: FluidSynth DLLs from build_scripts/win_libs/ (populated by CI or build_win.ps1)
+    binaries=_win_binaries,
     datas=datas,
     hiddenimports=[
         "tkinter",

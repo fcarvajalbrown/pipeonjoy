@@ -97,7 +97,6 @@ if command -v create-dmg &>/dev/null; then
         --icon-size 120 \
         --icon "pipeonjoy.app" 200 180 \
         --app-drop-link 450 180 \
-        --background-color "#1a0a2e" \
         "$ROOT/dist/pipeonjoy.dmg" \
         "$APP"
     echo "✓ DMG → dist/pipeonjoy.dmg"
