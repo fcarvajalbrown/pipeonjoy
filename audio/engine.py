@@ -27,12 +27,14 @@ SR = 44100
 
 # ── GM program numbers (0-indexed) ───────────────────────────────────────────
 GM = {
-    "piano":     0,   "epiano":  4,  "organ":    16,
-    "guitar":   25,   "distort": 29, "bass":     32,
-    "bass_pick":33,   "fret":    35,
-    "strings":  48,   "pad_age": 87, "pad_warm": 88,
-    "pad_choir":91,
+    "piano":      0,  "epiano":   4,  "organ":    16,
+    "guitar_ny": 24,  "guitar":  25,  "guitar_cl":26,
+    "guitar_muted":28,"distort": 29,  "guitar_harm":30,
+    "bass":      32,  "bass_pick":33, "fret":     35,
+    "strings":   48,  "pad_age": 87,  "pad_warm": 88,
+    "pad_choir": 91,
 }
+CH_GTR = 2   # dedicated guitar channel
 # GM drum note numbers
 DR = {
     "kick": 36, "snare": 38, "hihat_c": 42,
@@ -242,13 +244,66 @@ def _seq_chords(prog_lbl, root):
     drums  = _drum_bar(bpm, "4/4", 2)
     for loop in range(2):
         for i, sem in enumerate(prog_sem):
-            t = (loop*4 + i*2) * beat  # wait, 4 chords × 2 beats
             t = loop * 4 * beat + i * chord_dur
             events += _chord_events(rm, sem, t, chord_dur, ch=0, prog=GM["pad_age"])
             events.append((t, 1, 0, GM["bass"], rm+sem[0]-12, 90, chord_dur*.9))
-    events += [(t + beat*0, *rest) for t, *rest in drums]
+            # angular guitar stab on beat 1 of each chord
+            events.append((t, CH_GTR, 0, GM["guitar"], rm+12+sem[0], 82, beat*.35))
+            events.append((t+beat, CH_GTR, 0, GM["guitar"], rm+12+sem[-1], 75, beat*.3))
+    events += drums
     dur = chord_dur * 4 * 2 + 0.3
     return events, dur
+
+
+def _seq_guitar(texture_lbl, root):
+    rm   = _root_midi(root) + 24   # guitar sits two octaves above bass root
+    bpm, beat = 120, 60/120
+
+    if "Angular" in texture_lbl or "post-punk" in texture_lbl.lower():
+        prog = GM["guitar_cl"]
+        # staccato single-note riff — classic post-punk
+        pitches = [0, 3, 5, 0, 7, 5, 3, 5, 0, 3, 0, -2]
+        events  = [(beat*i*.5, CH_GTR, 0, prog, rm+p, 88, beat*.3)
+                   for i, p in enumerate(pitches)]
+    elif "Power" in texture_lbl:
+        prog = GM["distort"]
+        # power chords (root + 5th + octave) on the beat
+        events = []
+        for i in range(8):
+            t = beat * i
+            for interval in [0, 7, 12]:
+                events.append((t, CH_GTR, 0, prog, rm+interval, 100, beat*.85))
+    elif "Arpeggi" in texture_lbl:
+        prog = GM["guitar_cl"]
+        pitches = [0, 3, 7, 12, 10, 7, 3, 0, 3, 7, 12, 14]
+        events  = [(beat*i*.4, CH_GTR, 0, prog, rm+p, 78, beat*.38)
+                   for i, p in enumerate(pitches)]
+    elif "Heavy" in texture_lbl or "distort" in texture_lbl.lower():
+        prog = GM["distort"]
+        pitches = [0, 0, 0, 7, 0, 5, 0, 3]
+        events  = []
+        for i, p in enumerate(pitches):
+            t = beat * i * .5
+            events.append((t, CH_GTR, 0, prog, rm+p,    105, beat*.42))
+            events.append((t, CH_GTR, 0, prog, rm+p+7,  100, beat*.42))
+    elif "Harmonic" in texture_lbl or "tremolo" in texture_lbl.lower():
+        prog = GM["guitar_cl"]
+        # slow tremolo feel — repeated note with slight velocity variation
+        pitches = [0, 3, 0, 7, 0, 5, 0, 3]
+        events  = [(beat*i*.5, CH_GTR, 0, prog, rm+p,
+                    80 + (i % 3)*8, beat*.5)
+                   for i, p in enumerate(pitches)]
+    else:
+        prog = GM["guitar"]
+        pitches = [0, 3, 7, 10, 7, 3]
+        events  = [(beat*i*.5, CH_GTR, 0, prog, rm+p, 80, beat*.45)
+                   for i, p in enumerate(pitches)]
+
+    drums = _drum_bar(bpm, "4/4", 1)
+    bass_root = rm - 24
+    bass  = [(0, 1, 0, GM["bass"], bass_root, 85, beat*3.8)]
+    dur   = beat * 7 + 0.5
+    return events + drums + bass, dur
 
 def _seq_tempo(tempo_lbl):
     bpm = _find_bpm(tempo_lbl)
@@ -391,6 +446,12 @@ def preview_for_step(key: str, value: str, answers: dict) -> np.ndarray:
         "bass_pattern":      lambda: _seq_bass(value, root),
         "synth_char":        lambda: _seq_synth(value, root),
         "synth_presence":    lambda: _seq_synth(value, root),
+        # ── guitar steps — now actually play guitar ──
+        "guitar_texture":    lambda: _seq_guitar(value, root),
+        "guitar_density":    lambda: _seq_guitar(value, root),
+        "delay_type":        lambda: _seq_guitar(answers.get("guitar_texture","Angular"), root),
+        "reverb_amount":     lambda: _seq_guitar(answers.get("guitar_texture","Angular"), root),
+        "tremolo":           lambda: _seq_guitar(answers.get("guitar_texture","Angular"), root),
     }
 
     fn = dispatch.get(key)
