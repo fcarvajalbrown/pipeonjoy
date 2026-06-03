@@ -20,10 +20,13 @@ if sys.platform == "win32":
     if _win_libs.exists():
         _win_binaries = [(str(dll), ".") for dll in _win_libs.glob("*.dll")]
 
-# ── data files to bundle ──────────────────────────────────────────────────────
+# ── data files to bundle ─────────────────────────────────────────────────────
+# Use collect_data_files() for all packages with data — avoids hardcoded
+# python version paths and works on Windows, macOS, and CI equally.
 datas = (
-    # cmudict data — uses importlib.resources so collect_data_files is required
-    collect_data_files("cmudict")
+    collect_data_files("cmudict")          # CMU Pronouncing Dictionary
+    + collect_data_files("nrclex")         # NRC Emotion Lexicon JSON
+    + collect_data_files("vaderSentiment") # VADER lexicon + emoji file
 )
 datas += [
     # soundfonts — GeneralUser GS is primary; VintageDreams is fallback
@@ -31,13 +34,6 @@ datas += [
     (str(ROOT / "assets" / "sfz" / "VintageDreams.sf2"),  "assets/sfz"),
     # logo
     (str(ROOT / "assets" / "logo.svg"), "assets"),
-    # NRC emotion lexicon (bypasses NLTK dependency)
-    (str(ROOT / ".venv" / "lib" / "python3.13" / "site-packages" / "nrclex" / "data" / "nrc_en.json"),
-     "nrclex/data"),
-    # VADER lexicon + emoji lexicon
-    (str(ROOT / ".venv" / "lib" / "python3.13" / "site-packages" / "vaderSentiment"),
-     "vaderSentiment"),
-    # pronouncing — no data of its own; cmudict above covers its dict
     # wizard / audio / generator source packages
     (str(ROOT / "wizard"),    "wizard"),
     (str(ROOT / "audio"),     "audio"),

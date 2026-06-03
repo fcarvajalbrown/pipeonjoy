@@ -268,54 +268,56 @@ def _seq_chords(prog_lbl, root):
 
 
 def _seq_guitar(texture_lbl, root):
-    rm   = _root_midi(root) + 24   # guitar sits two octaves above bass root
+    rm   = _root_midi(root) + 24
     bpm, beat = 120, 60/120
 
     if "Angular" in texture_lbl or "post-punk" in texture_lbl.lower():
-        prog = GM["guitar_cl"]
-        # staccato single-note riff — classic post-punk
+        # Overdriven Guitar (GM 30, 0-indexed 29) — warm overdrive, not metal
+        prog    = GM["distort"]   # 29 = Overdriven Guitar in GM spec
         pitches = [0, 3, 5, 0, 7, 5, 3, 5, 0, 3, 0, -2]
-        events  = [(beat*i*.5, CH_GTR, 0, prog, rm+p, 88, beat*.3)
+        events  = [(beat*i*.5, CH_GTR, 0, prog, rm+p, 90, beat*.3)
                    for i, p in enumerate(pitches)]
     elif "Power" in texture_lbl:
-        prog = GM["distort"]
-        # power chords (root + 5th + octave) on the beat
+        prog   = GM["distort"]
         events = []
         for i in range(8):
             t = beat * i
             for interval in [0, 7, 12]:
-                events.append((t, CH_GTR, 0, prog, rm+interval, 100, beat*.85))
+                events.append((t, CH_GTR, 0, prog, rm+interval, 95, beat*.8))
     elif "Arpeggi" in texture_lbl:
-        prog = GM["guitar_cl"]
+        # keep clean for arpeggios — contrast is part of the sound
+        prog    = GM["guitar_cl"]
         pitches = [0, 3, 7, 12, 10, 7, 3, 0, 3, 7, 12, 14]
         events  = [(beat*i*.4, CH_GTR, 0, prog, rm+p, 78, beat*.38)
                    for i, p in enumerate(pitches)]
     elif "Heavy" in texture_lbl or "distort" in texture_lbl.lower():
-        prog = GM["distort"]
+        # Distortion Guitar (GM 31, 0-indexed 30) — heaviest preset
+        prog    = GM["guitar_harm"]   # 30 = Distortion Guitar in GM spec
         pitches = [0, 0, 0, 7, 0, 5, 0, 3]
         events  = []
         for i, p in enumerate(pitches):
             t = beat * i * .5
-            events.append((t, CH_GTR, 0, prog, rm+p,    105, beat*.42))
-            events.append((t, CH_GTR, 0, prog, rm+p+7,  100, beat*.42))
+            events.append((t, CH_GTR, 0, prog, rm+p,   100, beat*.42))
+            events.append((t, CH_GTR, 0, prog, rm+p+7,  95, beat*.42))
     elif "Harmonic" in texture_lbl or "tremolo" in texture_lbl.lower():
-        prog = GM["guitar_cl"]
-        # slow tremolo feel — repeated note with slight velocity variation
+        prog    = GM["distort"]
         pitches = [0, 3, 0, 7, 0, 5, 0, 3]
         events  = [(beat*i*.5, CH_GTR, 0, prog, rm+p,
-                    80 + (i % 3)*8, beat*.5)
+                    78 + (i % 3)*8, beat*.55)
                    for i, p in enumerate(pitches)]
     else:
-        prog = GM["guitar"]
+        prog    = GM["distort"]
         pitches = [0, 3, 7, 10, 7, 3]
-        events  = [(beat*i*.5, CH_GTR, 0, prog, rm+p, 80, beat*.45)
+        events  = [(beat*i*.5, CH_GTR, 0, prog, rm+p, 85, beat*.45)
                    for i, p in enumerate(pitches)]
 
-    drums = _drum_bar(bpm, "4/4", 1)
+    drums     = _drum_bar(bpm, "4/4", 1)
     bass_root = rm - 24
-    bass  = [(0, 1, 0, GM["bass"], bass_root, 85, beat*3.8)]
-    dur   = beat * 7 + 0.5
-    return events + drums + bass, dur
+    bass      = [(0, 1, 0, GM["bass"], bass_root, 85, beat*3.8)]
+    dur       = beat * 7 + 0.5
+
+    events_out = events + drums + bass
+    return events_out, dur
 
 def _seq_tempo(tempo_lbl):
     bpm = _find_bpm(tempo_lbl)
