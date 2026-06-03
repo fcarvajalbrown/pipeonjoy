@@ -1,21 +1,38 @@
 """
 Lyrics → music parameter suggestions.
 No LLM. Uses:
-  - NRCLex  (NRC Emotion Lexicon) for 8-emotion tagging
-  - VADER   (rule-based sentiment) for valence/arousal
+  - NRC Emotion Lexicon (direct JSON, no NLTK/TextBlob dependency)
+  - VADER (rule-based sentiment) for valence/arousal
   - pronouncing (CMU dict) for syllable count + stress patterns
-  - plain heuristics for rhyme scheme, line density, repetition
+  - plain heuristics for line density and repetition
 """
 import re
+import json
 import random
 import hashlib
 from collections import Counter
+from pathlib import Path
 
-try:
-    from nrclex import NRCLex
-    HAS_NRC = True
-except ImportError:
-    HAS_NRC = False
+# ── NRC lexicon — direct load, no TextBlob/NLTK needed ───────────────────────
+def _find_nrc_json() -> Path | None:
+    for p in Path(__file__).parents:
+        cand = p / ".venv" / "lib"
+        if cand.exists():
+            hits = list(cand.rglob("nrc_en.json"))
+            if hits:
+                return hits[0]
+    return None
+
+_NRC: dict = {}
+_nrc_path = _find_nrc_json()
+if _nrc_path:
+    try:
+        with open(_nrc_path, encoding="utf-8") as _f:
+            _NRC = json.load(_f)  # {word: [emotion, ...]}
+    except Exception:
+        pass
+
+HAS_NRC = bool(_NRC)
 
 try:
     from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
@@ -133,25 +150,26 @@ def analyze(lyrics: str) -> dict:
 def _random_spec(seed=None, skip: set = None) -> dict:
     """Seeded-random spec for all STEPS not already in skip."""
     # lazy import to avoid circular
-    from main import STEPS
+    from wizard.steps import STEPS
     skip = skip or set()
     rng  = random.Random(seed)
     return {
-        key: rng.choice(options)
-        for key, _label, options in STEPS
-        if key not in skip
+        s["key"]: rng.choice(s["options"])
+        for s in STEPS
+        if s["key"] not in skip
     }
 
 
 # ── analysis helpers ──────────────────────────────────────────────────────────
 
 def _detect_emotions(lyrics: str) -> list:
-    if not HAS_NRC:
-        return [("sadness", 1)]
-    nrc = NRCLex(lyrics)
-    scores = {k: v for k, v in nrc.affect_frequencies.items()
-              if k not in ("positive", "negative") and v > 0}
-    return sorted(scores.items(), key=lambda x: x[1], reverse=True)
+    words = re.findall(r"[a-z']+", lyrics.lower())
+    counts: dict = {}
+    for w in words:
+        for emo in _NRC.get(w, []):
+            if emo not in ("positive", "negative"):
+                counts[emo] = counts.get(emo, 0) + 1
+    return sorted(counts.items(), key=lambda x: x[1], reverse=True)
 
 
 def _detect_valence(lyrics: str) -> float:

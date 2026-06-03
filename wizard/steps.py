@@ -1,0 +1,503 @@
+"""Step definitions: key, label, help text, options."""
+
+STEPS = [
+    {
+        "key": "release_type",
+        "label": "What are you making?",
+        "help": "Sets how outputs are organized. Single = one song. EP = 3–6 songs. Album = 8–16 songs. After each song the wizard reminds you to return and make the next one.",
+        "options": ["Single", "EP", "Album"],
+    },
+    {
+        "key": "mood",
+        "label": "Emotional core",
+        "help": "Seeds the palette for pre-filling later suggestions. Pick the gut of the song — not the genre, the feeling.",
+        "options": [
+            "nostalgic / melancholic",
+            "dreamy / dissociated",
+            "cold / electronic",
+            "euphoric / hollow",
+            "lo-fi / hazed",
+            "dark / heavy",
+            "spiritual / slow",
+        ],
+    },
+    {
+        "key": "mode",
+        "label": "Scale / mode",
+        "help": (
+            "The scale's personality. Aeolian = classic dark minor. "
+            "Dorian = minor with a raised 6th — sadder but with an edge of hope. "
+            "Phrygian = flat-2 tension. Hijaz = Armenian / flamenco, very alien. "
+            "Double Harmonic = two augmented 2nds, Byzantine. "
+            "Locrian = tritone root, extreme instability. "
+            "Mixolydian = major flat-7, warm and bluesy."
+        ),
+        "options": [
+            "Aeolian — natural minor (melancholic base)",
+            "Dorian — minor raised 6th (jazzy, hopeful shadow)",
+            "Phrygian — dark, tense, minor ♭2",
+            "Phrygian Dominant / Hijaz — Armenian, alien, flamenco",
+            "Double Harmonic / Byzantine — two augmented 2nds",
+            "Locrian — tritone root, maximum instability",
+            "Mixolydian — major flat 7 (blues / vaporwave warmth)",
+        ],
+    },
+    {
+        "key": "root_key",
+        "label": "Root key",
+        "help": "The pitch center. E and A are the post-punk standard registers. D and G sit warmer. F# and C# sound colder and higher-pitched. Your voice range matters more than theory here.",
+        "options": ["E", "A", "D", "G", "B", "F#", "C#", "C", "F", "Bb", "Eb", "Ab"],
+    },
+    {
+        "key": "tempo_range",
+        "label": "Tempo feel",
+        "help": "Drift (60–80) = slowed vaporwave, thick and heavy. Walk (80–100) = lo-fi groove. Drive (100–130) = post-punk forward motion. Aggro (140+) = industrial or metal urgency.",
+        "options": [
+            "Drift (60–80 BPM) — slowed vaporwave core",
+            "Walk (80–100 BPM) — lo-fi groove",
+            "Drive (100–130 BPM) — post-punk energy",
+            "Aggro (140–180 BPM) — industrial / metal",
+        ],
+    },
+    {
+        "key": "time_sig",
+        "label": "Time signature",
+        "help": "4/4 is default for most rock and electronic. 3/4 gives a waltz feel. 6/8 is triplet-based. 5/4 and 7/8 are odd meters — Gojira, Tool. Mixed = different sections use different meters.",
+        "options": ["4/4", "3/4", "6/8", "5/4", "7/8", "11/8", "Mixed per section"],
+    },
+    {
+        "key": "chord_prog",
+        "label": "Chord progression",
+        "help": "The harmonic skeleton. Roman numerals are relative to your root. i = root minor chord. VII = major chord one whole step down. ♭II (Neapolitan) is very dark. The first option is the Joy Division standard.",
+        "options": [
+            "i – VII – VI – VII (post-punk standard)",
+            "i – VI – III – VII (cinematic minor)",
+            "i – iv – VII – III (descending bass line)",
+            "i – ♭II – VII – i (Phrygian tension)",
+            "i – III – ♭VII – IV (Dorian lift)",
+            "I – V – vi – IV (pop loop slowed down)",
+        ],
+    },
+    {
+        "key": "borrowed_chord",
+        "label": "Borrowed chords / modal mixture",
+        "help": "Borrowing from the parallel key creates a brief color shift. ♭VII is most common — Radiohead, Portishead. iv in major creates sudden pathos. None is a strong choice too — harmonic purity.",
+        "options": [
+            "None",
+            "♭VI (borrow from parallel minor)",
+            "♭VII (flat seven lift)",
+            "iv in major (minor four — emotional punch)",
+            "♭II (Neapolitan — very dark)",
+        ],
+    },
+    {
+        "key": "modulation",
+        "label": "Modulation / key change",
+        "help": "Whether and how the song changes key mid-track. Chromatic mediant = dramatic 3-semitone jump (cinematic). Jazz ii–V–I = smooth pivot. Gojira-style = abrupt, no pivot — shocking. Deceptive cadence = V resolves to ♭VI instead of I.",
+        "options": [
+            "None",
+            "Chromatic mediant ±3 semitones",
+            "Jazz ii–V–I pivot",
+            "Direct / brutal — no pivot (Gojira style)",
+            "Deceptive cadence (V → ♭VI)",
+        ],
+    },
+    {
+        "key": "pedal_tone",
+        "label": "Pedal tone (sustained bass note)",
+        "help": "A sustained bass note held while chords move above it — drone effect. Tonic pedal = stable but hypnotic. Dominant pedal = unresolved, tense. Very common in Joy Division and post-punk.",
+        "options": [
+            "None",
+            "Tonic pedal (root stays fixed)",
+            "Dominant pedal (5th held — tension)",
+        ],
+    },
+    {
+        "key": "groove",
+        "label": "Groove feel",
+        "help": "How the rhythmic elements sit against the grid. Straight = machine-tight, cold, post-punk. Swung = jazz-influenced, human. Shuffled = shuffle 8ths, blues-adjacent. Stiff = fully quantized.",
+        "options": [
+            "Straight / machine-tight",
+            "Swung",
+            "Shuffled",
+            "Quantized stiff (no humanize)",
+        ],
+    },
+    {
+        "key": "syncopation",
+        "label": "Syncopation density",
+        "help": "How often rhythm hits off the beat. None = everything lands on the grid. Heavy = most hits are between beats — funky, unsettled. Joy Division used light syncopation only.",
+        "options": [
+            "None — on the grid",
+            "Light — occasional off-beat",
+            "Moderate",
+            "Heavy",
+        ],
+    },
+    {
+        "key": "rhythmic_displacement",
+        "label": "Rhythmic displacement",
+        "help": "Shifts a repeating riff so it starts slightly off its expected position — the riff 'leans' against the backbeat. Common in Gojira and post-punk guitar parts.",
+        "options": [
+            "None",
+            "Shifted 1 sixteenth note",
+            "Shifted 1 eighth note",
+            "Custom offset",
+        ],
+    },
+    {
+        "key": "polyrhythm",
+        "label": "Polyrhythm layer",
+        "help": "Two rhythmic patterns with different cycle lengths playing simultaneously. 3-over-4 = triplets over a 4/4 grid — Gojira's signature. Hemiola = 2-against-3 — classical, waltz-like.",
+        "options": [
+            "None",
+            "3-over-4 (Gojira triplet wash)",
+            "4-over-3",
+            "2-over-3 hemiola",
+        ],
+    },
+    {
+        "key": "metric_mod",
+        "label": "Metric modulation mid-song",
+        "help": "The tempo feel changes without the BPM changing, by reinterpreting how beats subdivide. Creates a sudden lurch in perceived speed — very disorienting and powerful.",
+        "options": [
+            "No",
+            "Yes — reinterpret 8ths as triplets",
+            "Yes — other feel shift",
+        ],
+    },
+    {
+        "key": "structure",
+        "label": "Song sections",
+        "help": "The song's macro form. Post-punk often keeps it simple (no pre-chorus). Vaporwave often has no real chorus — just sections with different density and atmosphere.",
+        "options": [
+            "Intro → Verse → Chorus → Outro",
+            "Intro → Verse → Chorus → Bridge → Chorus → Outro",
+            "Intro → Verse → Pre-Chorus → Chorus → Bridge → Outro",
+            "Minimal: Intro → Part A → Part B → Outro",
+            "Instrumental (no vocal sections)",
+        ],
+    },
+    {
+        "key": "intro_char",
+        "label": "Intro character",
+        "help": "Sets the opening register. Cold open = lone instrument establishes mood before the band enters. Full band = immediate intensity from bar 1. Slow build = quieter-to-louder arc.",
+        "options": [
+            "Cold open — single instrument alone",
+            "Full band from bar 1",
+            "Slow build from silence",
+            "Drums only",
+        ],
+    },
+    {
+        "key": "outro_char",
+        "label": "Outro treatment",
+        "help": "How the song ends. Hard cut = abrupt — very Joy Division. Deconstruct = instruments drop out one by one. Loop-and-stutter = vaporwave tape-warping, never fully resolves.",
+        "options": [
+            "Hard cut",
+            "Fade",
+            "Deconstruct — drop instruments one by one",
+            "Loop and stutter",
+        ],
+    },
+    {
+        "key": "kick_pattern",
+        "label": "Kick drum pattern",
+        "help": "The bass drum defines the song's pulse. 4-on-floor = relentless drive. Syncopated = unexpected and danceable. Polyrhythmic = two kick patterns layered — complex and heavy.",
+        "options": [
+            "Straight 4-on-floor",
+            "2-and-4 backbeat emphasis",
+            "Syncopated",
+            "Double-kick bursts",
+            "Polyrhythmic",
+        ],
+    },
+    {
+        "key": "snare_place",
+        "label": "Snare placement",
+        "help": "The snare defines the backbeat. 2&4 is universal rock. Pushing to 1&3 creates an aggressive forward lean. Ghost notes only = very subtle — the snare is implied rather than stated.",
+        "options": [
+            "2 & 4 backbeat",
+            "1 & 3 push",
+            "Syncopated",
+            "Rimshot only",
+            "Ghost notes only",
+        ],
+    },
+    {
+        "key": "hihat_density",
+        "label": "Hi-hat density",
+        "help": "How busy the hi-hat is. Quarter notes = sparse and open, lots of breathing room. 8ths = standard rock. 16ths = driving and impatient. Joy Division used 8ths almost exclusively.",
+        "options": [
+            "Quarter notes (sparse)",
+            "Eighth notes (standard)",
+            "Sixteenth notes (driving)",
+            "Open + close pattern",
+        ],
+    },
+    {
+        "key": "ghost_notes",
+        "label": "Snare ghost notes",
+        "help": "Quiet snare hits between the main beats — adds groove depth without cluttering. Joy Division used almost none. Heavy ghost notes give a funk-influenced feel.",
+        "options": [
+            "None",
+            "Subtle — a few between main beats",
+            "Heavy — funk style",
+        ],
+    },
+    {
+        "key": "fill_freq",
+        "label": "Drum fill frequency",
+        "help": "How often the drummer breaks from the pattern. Minimal = Joy Division restraint — fills are rare and therefore impactful. Every 4 bars = constant variation, more progressive.",
+        "options": [
+            "Every 4 bars",
+            "Every 8 bars",
+            "Minimal — Joy Division / vaporwave restraint",
+        ],
+    },
+    {
+        "key": "bass_role",
+        "label": "Bass role",
+        "help": "The bass's character. Melodic lead (Peter Hook) = bass rides above the guitar register with a melodic line — the most Joy Division thing you can do. Root-locker = harmonic anchor. Counter-melody = answers the vocal.",
+        "options": [
+            "Melodic lead — high register (Peter Hook style)",
+            "Root-locker — harmonic anchor",
+            "Rhythmic pulse",
+            "Walking — jazz style",
+            "Counter-melody",
+        ],
+    },
+    {
+        "key": "bass_pattern",
+        "label": "Bass pattern type",
+        "help": "The bass's note-to-note behavior. Scalar runs = Joy Division style ascending/descending phrases along the scale. Root–fifth = power chord movement. Chromatic approach = jazzy, slides into targets.",
+        "options": [
+            "Scalar runs",
+            "Arpeggiated chord tones",
+            "Root–fifth",
+            "Chromatic approach notes",
+            "Pedal with fills",
+        ],
+    },
+    {
+        "key": "bass_register",
+        "label": "Bass octave register",
+        "help": "Where the bass sits in the frequency spectrum. Mid (Peter Hook style) = bass rides high, almost guitar register — creates empty space at the low end for the kick to breathe.",
+        "options": [
+            "Deep low",
+            "Mid (Hook style — rides above guitar)",
+            "High riding",
+        ],
+    },
+    {
+        "key": "bass_kick_rel",
+        "label": "Bass vs kick relationship",
+        "help": "How bass and kick drum relate rhythmically. Locked tight = both hit the same beats. Independent = bass ignores the kick — more complex, creates rhythmic tension between the two.",
+        "options": [
+            "Locked tight",
+            "Slightly ahead of kick (aggressive)",
+            "Independent (rhythmic tension)",
+        ],
+    },
+    {
+        "key": "bass_length",
+        "label": "Bass note length",
+        "help": "Note duration. Staccato = punchy and percussive, rhythmically defined edges. Sustained = legato, more melodic and flowing. Mixed = staccato on downbeats, sustained on held notes.",
+        "options": ["Staccato — punchy", "Sustained", "Mixed"],
+    },
+    {
+        "key": "guitar_texture",
+        "label": "Guitar texture",
+        "help": "The guitar's role and sound. Angular = dry, short notes — classic post-punk. Arpeggiated = broken chords, dreamier. None = synth replaces guitar entirely (pure vaporwave).",
+        "options": [
+            "Angular single-note (post-punk)",
+            "Sparse power chord stabs",
+            "Arpeggiated clean",
+            "Heavy distorted",
+            "Harmonics / tremolo",
+            "None — synth replaces guitar",
+        ],
+    },
+    {
+        "key": "guitar_density",
+        "label": "Guitar layering",
+        "help": "How many guitar layers. Single dry = one take, raw and present. Double-tracked = wider and more solid. Harmonized tritone = very dark interval (6 semitones) — creates dissonance.",
+        "options": [
+            "Single dry line",
+            "Double-tracked",
+            "Harmonized — 3rd",
+            "Harmonized — tritone (dark)",
+        ],
+    },
+    {
+        "key": "delay_type",
+        "label": "Guitar delay",
+        "help": "Echo on the guitar. Slapback (100–200ms) = tight, fast echo — classic post-punk and rockabilly. Long (400–600ms) = spacious and washy. Tape echo = lo-fi degradation, analog warmth.",
+        "options": [
+            "None",
+            "Slapback 100–200 ms (tight)",
+            "Long 400–600 ms (atmospheric)",
+            "Tape echo (lo-fi, vaporwave)",
+        ],
+    },
+    {
+        "key": "reverb_amount",
+        "label": "Reverb amount",
+        "help": "How much spatial depth. Dry = close and present. Room = subtle space. Wash = very wet — guitar becomes part of the atmosphere rather than a defined instrument (shoegaze / vaporwave).",
+        "options": [
+            "Dry",
+            "Room — subtle space",
+            "Hall — spacious",
+            "Wash — ambient high wet (shoegaze / vapor)",
+        ],
+    },
+    {
+        "key": "tremolo",
+        "label": "Tremolo / vibrato",
+        "help": "Rhythmic volume modulation on the guitar. Heavy tremolo = surf, goth, spaghetti western feel — adds movement to sustained notes without changing pitch.",
+        "options": ["None", "Subtle", "Heavy — surf / goth"],
+    },
+    {
+        "key": "synth_presence",
+        "label": "Synth presence",
+        "help": "Whether synth appears and how prominent it is. None = pure guitar/bass/drums. Lead = synth takes over from guitar as the main melodic voice — full vaporwave mode.",
+        "options": [
+            "None",
+            "Subtle background pad",
+            "Prominent texture",
+            "Lead voice",
+        ],
+    },
+    {
+        "key": "synth_role",
+        "label": "Synth role",
+        "help": "What the synth actually does. Pad = harmonic atmosphere. Counter-melody = melodic line distinct from bass and vocal. Rhythmic stab = syncopated chords used percussively.",
+        "options": [
+            "Harmonic pad",
+            "Bass doubling",
+            "Counter-melody",
+            "Rhythmic stab",
+            "Ambient noise / texture",
+        ],
+    },
+    {
+        "key": "synth_char",
+        "label": "Synth character",
+        "help": "The synth's timbre. Detuned/detached = two slightly out-of-tune oscillators — the classic vaporwave sound. FM bell = DX7-style electric piano or bell. Granular = textural and glitchy.",
+        "options": [
+            "Warm analog",
+            "Cold digital",
+            "Detuned / detached (vaporwave classic)",
+            "Granular noise",
+            "FM bell / electric piano (vaporwave warmth)",
+        ],
+    },
+    {
+        "key": "atmo_fx",
+        "label": "Atmospheric FX layer",
+        "help": "Background texture under everything else. Vinyl crackle = retro warmth and vaporwave authenticity. Reversed pads = dreamy, disorienting. None = clean and dry.",
+        "options": [
+            "None",
+            "White noise swell",
+            "Reversed pads",
+            "Industrial clang",
+            "Vinyl crackle (lo-fi / vaporwave)",
+        ],
+    },
+    {
+        "key": "vocal_delivery",
+        "label": "Vocal delivery (MIDI reference only)",
+        "help": "Reference style for the MIDI guide track you'll sing over. Monotone/spoken = Ian Curtis — minimal pitch variation, lyrical delivery dominates. Slurred/shifted = vaporwave pitch-down vocal.",
+        "options": [
+            "Monotone / spoken (Ian Curtis)",
+            "Melodic minor scale",
+            "Call and response",
+            "Chant-like",
+            "Slurred / pitch-shifted (vaporwave style)",
+        ],
+    },
+    {
+        "key": "vocal_tessitura",
+        "label": "Vocal tessitura target",
+        "help": "Where most of the vocal line sits. Match your actual comfortable singing range — this sets the register for the MIDI reference melody. Low baritone = Ian Curtis territory.",
+        "options": ["Low baritone", "Mid range", "Upper mid", "High tenor"],
+    },
+    {
+        "key": "vocal_contour",
+        "label": "Vocal contour shape",
+        "help": "The shape of the melody's pitch movement. Arch = starts low, rises to climax, falls — the most natural. Plateau = stays at constant tension — very Joy Division. Descending = opens high, falls away.",
+        "options": [
+            "Arch — rises then falls",
+            "Ascending build",
+            "Plateau — sustained tension",
+            "Descending release",
+        ],
+    },
+    {
+        "key": "hook_placement",
+        "label": "Hook placement",
+        "help": "Where the catchiest or most memorable moment lives. Outro = reveals the hook at the end — melancholic, bittersweet. Chorus top = standard. Pre-chorus = builds anticipation.",
+        "options": ["Chorus top", "Pre-chorus", "Outro", "All sections"],
+    },
+    {
+        "key": "phrasing_density",
+        "label": "Vocal phrasing density",
+        "help": "How many notes per word/syllable. Syllabic = one note per syllable — clean and clear. Sparse = long pauses between phrases — dramatic and lonely, like Ian Curtis.",
+        "options": [
+            "Syllabic — one note per syllable",
+            "Melismatic — runs",
+            "Sparse — lots of space between phrases",
+        ],
+    },
+    {
+        "key": "call_response",
+        "label": "Instrument answers the vocal?",
+        "help": "Whether an instrument fills the silence after each vocal phrase. Bass answer = bass fills the gap after you stop singing — very Joy Division. Guitar echo = the guitar mirrors the vocal contour.",
+        "options": ["None", "Bass answer", "Guitar echo", "Synth pad response"],
+    },
+    {
+        "key": "compression",
+        "label": "Compression character",
+        "help": "How dynamic range is controlled. Punchy = loud transients preserved — live and aggressive. Smooth = sustain-heavy, everything sits at similar volume. Sidechain pump = EDM-style, vaporwave.",
+        "options": [
+            "Punchy — transient-heavy",
+            "Smooth — sustain-heavy",
+            "Sidechain pump (EDM / vapor)",
+        ],
+    },
+    {
+        "key": "stereo",
+        "label": "Stereo picture",
+        "help": "The stereo image. Asymmetric = bass hard left, guitar hard right — early Joy Division recordings. Mono = raw and primitive, sounds like it came from a tape. Immersive = wide, surrounding.",
+        "options": [
+            "Mono — raw",
+            "Standard wide",
+            "Asymmetric (bass left, guitar right)",
+            "Immersive",
+        ],
+    },
+    {
+        "key": "mix_density",
+        "label": "Mix density",
+        "help": "How crowded the mix feels. Sparse = few elements, lots of room — post-punk austerity. Lush = multiple layered parts creating a dense wall of sound — shoegaze, dream pop.",
+        "options": [
+            "Sparse and dry (post-punk minimal)",
+            "Mid-dense",
+            "Lush and layered",
+        ],
+    },
+]
+
+# 10-question quick mode — the most decision-essential steps
+QUICK_KEYS = [
+    "release_type",
+    "mood",
+    "mode",
+    "root_key",
+    "tempo_range",
+    "chord_prog",
+    "bass_role",
+    "guitar_texture",
+    "synth_presence",
+    "mix_density",
+]
