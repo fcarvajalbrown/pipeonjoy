@@ -26,8 +26,9 @@ datas = (
     collect_data_files("cmudict")
 )
 datas += [
-    # soundfont
-    (str(ROOT / "assets" / "sfz" / "VintageDreams.sf2"), "assets/sfz"),
+    # soundfonts — GeneralUser GS is primary; VintageDreams is fallback
+    (str(ROOT / "assets" / "sfz" / "GeneralUser_GS.sf2"), "assets/sfz"),
+    (str(ROOT / "assets" / "sfz" / "VintageDreams.sf2"),  "assets/sfz"),
     # logo
     (str(ROOT / "assets" / "logo.svg"), "assets"),
     # NRC emotion lexicon (bypasses NLTK dependency)

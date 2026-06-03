@@ -1,9 +1,10 @@
 """
 Audio engine.
-Primary:  FluidSynth (pyfluidsynth) + VintageDreams.sf2 for realistic previews.
-Fallback: additive synthesis when FluidSynth is unavailable.
+Primary:  FluidSynth (pyfluidsynth) + GeneralUser GS SF2 (31 MB, real multi-sampled GM bank).
+Fallback: VintageDreams.sf2, then additive synthesis when FluidSynth is unavailable.
 """
 import os
+import sys
 import threading
 import numpy as np
 from pathlib import Path
@@ -26,15 +27,20 @@ except ImportError:
 SR = 44100
 
 # ── GM program numbers (0-indexed) ───────────────────────────────────────────
+# Tuned for GeneralUser GS which has real multi-sampled guitar and voice patches
 GM = {
     "piano":      0,  "epiano":   4,  "organ":    16,
     "guitar_ny": 24,  "guitar":  25,  "guitar_cl":26,
     "guitar_muted":28,"distort": 29,  "guitar_harm":30,
     "bass":      32,  "bass_pick":33, "fret":     35,
-    "strings":   48,  "pad_age": 87,  "pad_warm": 88,
+    "strings":   48,
+    "voice_oohs":53,  "synth_voice":54,           # vocal reference patches
+    "lead_voice":85,                               # solo lead voice
+    "pad_age":   87,  "pad_warm": 88,
     "pad_choir": 91,
 }
-CH_GTR = 2   # dedicated guitar channel
+CH_GTR  = 2   # dedicated guitar channel
+CH_VOCAL = 3  # vocal reference channel
 # GM drum note numbers
 DR = {
     "kick": 36, "snare": 38, "hihat_c": 42,
@@ -80,7 +86,8 @@ def _find_sf2() -> Path | None:
     else:
         base = Path(__file__).parents[1]
 
-    for name in ("VintageDreams.sf2", "GeneralUser_GS.sf2"):
+    # Prefer GeneralUser GS (31 MB, real multi-sampled GM bank) over VintageDreams
+    for name in ("GeneralUser_GS.sf2", "VintageDreams.sf2"):
         p = base / "assets" / "sfz" / name
         if p.exists() and p.stat().st_size > 50_000:
             return p
@@ -407,6 +414,40 @@ def _seq_synth(char_lbl, root):
     events = [(0, 0, 0, prog, rm+s, 80, 2.5) for s in sem]
     return events, 3.0
 
+def _seq_vocal(delivery_lbl, contour_lbl, root):
+    """Vocal reference preview — uses voice GM patches so it sounds like a sung line."""
+    rm   = _root_midi(root) + 24    # vocal sits in the mid-upper register
+    bpm, beat = 90, 60/90
+
+    # pick patch based on delivery style
+    if "Slurred" in delivery_lbl or "pitch-shifted" in delivery_lbl.lower():
+        prog = GM["synth_voice"]
+    elif "Chant" in delivery_lbl or "monotone" in delivery_lbl.lower():
+        prog = GM["voice_oohs"]
+    else:
+        prog = GM["lead_voice"]
+
+    # build melody shape from contour label
+    if "Arch" in contour_lbl:
+        pitches = [0, 2, 3, 5, 7, 7, 5, 7, 5, 3, 2, 0]
+    elif "Ascending" in contour_lbl:
+        pitches = [0, 2, 3, 5, 5, 7, 8, 10, 10, 8, 7, 5]
+    elif "Descending" in contour_lbl:
+        pitches = [10, 8, 7, 5, 5, 3, 2, 0, 0, 2, 0, -2]
+    else:  # Plateau — sustained tension
+        pitches = [5, 5, 7, 5, 5, 7, 5, 3, 5, 5, 7, 5]
+
+    note_dur = beat * 0.85
+    events = [(beat * i, CH_VOCAL, 0, prog, rm + p, 82, note_dur)
+              for i, p in enumerate(pitches)]
+
+    # add a simple drum + bass backdrop
+    drums = _drum_bar(bpm, "4/4", 1)
+    bass  = [(0, 1, 0, GM["bass"], rm - 24, 78, beat * 3.8)]
+    dur   = beat * len(pitches) + 0.5
+    return events + drums + bass, dur
+
+
 def _seq_varied(key, value, root):
     """Fallback: generate a subtly varied preview so every option sounds different."""
     rm   = _root_midi(root)
@@ -451,12 +492,28 @@ def preview_for_step(key: str, value: str, answers: dict) -> np.ndarray:
         "bass_pattern":      lambda: _seq_bass(value, root),
         "synth_char":        lambda: _seq_synth(value, root),
         "synth_presence":    lambda: _seq_synth(value, root),
-        # ── guitar steps — now actually play guitar ──
+        # ── guitar steps ──
         "guitar_texture":    lambda: _seq_guitar(value, root),
         "guitar_density":    lambda: _seq_guitar(value, root),
         "delay_type":        lambda: _seq_guitar(answers.get("guitar_texture","Angular"), root),
         "reverb_amount":     lambda: _seq_guitar(answers.get("guitar_texture","Angular"), root),
         "tremolo":           lambda: _seq_guitar(answers.get("guitar_texture","Angular"), root),
+        # ── vocal reference steps ──
+        "vocal_delivery":    lambda: _seq_vocal(value,
+                                 answers.get("vocal_contour","Arch — rises then falls"), root),
+        "vocal_contour":     lambda: _seq_vocal(
+                                 answers.get("vocal_delivery","Melodic minor scale"), value, root),
+        "vocal_tessitura":   lambda: _seq_vocal(
+                                 answers.get("vocal_delivery","Melodic minor scale"),
+                                 answers.get("vocal_contour","Arch — rises then falls"), root),
+        "hook_placement":    lambda: _seq_vocal(
+                                 answers.get("vocal_delivery","Melodic minor scale"),
+                                 answers.get("vocal_contour","Arch — rises then falls"), root),
+        "phrasing_density":  lambda: _seq_vocal(
+                                 answers.get("vocal_delivery","Melodic minor scale"), value, root),
+        "call_response":     lambda: _seq_vocal(
+                                 answers.get("vocal_delivery","Melodic minor scale"),
+                                 answers.get("vocal_contour","Arch — rises then falls"), root),
     }
 
     fn = dispatch.get(key)

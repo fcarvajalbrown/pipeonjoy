@@ -177,4 +177,25 @@ Deferred to v2.0. Stub lives in `wizard/sample_analysis.py`. Implementation will
 
 ---
 
+## ADR-009 · Post-export stem mixer panel
+
+**Status:** Planned (v0.2)  
+**Date:** 2026-06-03
+
+**Context:**  
+After the wizard exports a 32-bar MIDI sketch, users want to adjust instrument balance before committing to a DAW session — e.g. push the bass, drop the pad, add more drums.
+
+**Decision:**  
+After export, a mixer panel opens (or can be re-opened) showing one channel strip per instrument: drums, bass, guitar, chords/pad, and master. Each strip has a volume fader and a pan knob. A Play button streams the mix live via `sounddevice`. A "Re-render WAV" button re-runs the FluidSynth render with the new gain values applied per-track and overwrites `sketch.wav`.
+
+Implementation requires rendering each instrument to a separate stem WAV during export (one FluidSynth pass per MIDI channel), then mixing in Python with `numpy` at playback/re-render time.
+
+**Consequences:**  
+- Export time increases (multiple FluidSynth passes); acceptable for a 32-bar sketch (~5 seconds each).
+- Stems stored in `outputs/<release>/<song>/stems/` alongside the master WAV.
+- Replaces the current single-pass FluidSynth render.
+- Unlocks future per-instrument FX (reverb send, EQ) as v0.3 additions.
+
+---
+
 *Last updated: 2026-06-03 — Felipe Carvajal Brown*
