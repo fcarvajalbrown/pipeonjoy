@@ -65,6 +65,21 @@ Items are ordered by priority within each release. Dates are targets, not promis
 
 ## v0.3 — Planned
 
+**Intuitive entry mode: Mood Map + Character Cards** *(replaces 45-question questionnaire as default)*
+
+The 45-step wizard becomes "Advanced Mode". New default flow:
+
+1. **Mood Map** — a 2D canvas (X: dark↔bright, Y: sparse↔dense). User clicks anywhere → system generates a 4-bar preview and pre-fills all answers instantly → user tweaks only what sounds wrong. 2 seconds to a draft.
+2. **Character Cards per instrument** — instead of 12 drum questions, pick one card: "Post-Punk Restraint" / "Gojira Machine" / "Lo-Fi Haze" / "Jazz Brush". Each card has a name, color, 2-second audio clip, and one reference artist. 4 cards × 5 instruments = 20 creative decisions that feel like choices, not parameter tuning.
+
+Research basis: Endlesss (hear → react → refine), GarageBand Smart Instruments (preset as identity), Direct Manipulation principle (Shneiderman 1982), Korg Gadget city-named presets.
+
+**Artist DNA mixing** *(v0.4, requires curated lookup table)*
+- Pick two reference artists from a grid (e.g. Joy Division × Björk)
+- System infers full parameter set from a lookup table of ~50 artists — no LLM
+- Preview plays immediately; user shifts the blend ratio
+- Zero abstract music-theory terminology required
+
 **Thin DAW plugin (VST3 / AU / CLAP)**
 - Lightweight C++ plugin (JUCE or DPF) that subscribes to the `pipeonjoy` virtual MIDI port
 - Appears in Ableton/Logic/Reaper plugin browser
