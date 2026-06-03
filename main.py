@@ -133,48 +133,81 @@ class PipeOnJoy(tk.Tk):
 
     # ── splash ────────────────────────────────────────────────────────────────
 
+    # Tier data: (tier_label, bg_color, text_color, albums, spec_lines)
+    _TIERS = [
+        (
+            "SIMPLE  — one or two keys, straight 4/4, genre-defining",
+            "#0a1a0a", "#44ff88", "#99cc99",
+            [
+                "Joy Division — Unknown Pleasures (1979)   E minor · 4/4 · i–VII–VI · root-lock bass",
+                "The Cure — Boys Don't Cry (1980)          A minor · 4/4 · i–VI–III · clean arpeggios",
+                "Bauhaus — In the Flat Field (1980)        D minor · 4/4 · power chords · no overdubs",
+                "Interpol — Turn On the Bright Lights (02) E minor · 4/4 · minimal fills · dry mix",
+                "Beach House — Teen Dream (2010)            C major · 4/4 · I–V–vi–IV · dreamy pad",
+                "Cigarettes After Sex — s/t (2017)         A major · 4/4 · I–IV–V · reverb wash",
+            ],
+        ),
+        (
+            "INTERMEDIATE  — borrowed chords, modulation, odd groove or texture",
+            "#0a0a1a", "#7777ff", "#9999cc",
+            [
+                "Radiohead — The Bends (1995)              E minor + ♭VII borrows · 4/4 swung",
+                "Portishead — Dummy (1994)                 D minor/A minor · trip-hop shuffle · jazz guitar",
+                "Nick Cave — Murder Ballads (1996)         A Dorian · 4/4 · deceptive cadence V→♭VI",
+                "PJ Harvey — To Bring You My Love (1995)  E Phrygian · slow doom · pedal tone",
+                "Chelsea Wolfe — Abyss (2015)              B Aeolian + ♭VI borrow · 6/8 feel · bass lead",
+                "Lana Del Rey — Norman Fucking Rockwell (19) F# Dorian · 4/4 + metric shift · lush strings",
+            ],
+        ),
+        (
+            "COMPLEX  — modal, polyrhythm, key changes, odd meters",
+            "#1a0a0a", "#ff7755", "#cc9999",
+            [
+                "Gojira — From Mars to Sirius (2005)       Drop D · 7/8+4/4 polyrhythm · 3-over-4",
+                "Meshuggah — Obzen (2008)                  E Phrygian · 17/16 · metric modulation",
+                "Tool — Lateralus (2001)                   A Phrygian · 9+8+7/8 · chromatic mediant",
+                "Godspeed You! — Lift Your Skinny Fists (00) E minor → D Dorian · post-rock build/drop",
+                "Björk — Homogenic (1997)                  B Phrygian Dom. · 5/4 · detuned strings",
+                "Salem — King Night (2010)                 G# Aeolian · 4/4 slowed · double harmonic",
+            ],
+        ),
+    ]
+
     def _build_splash(self):
         self._clear()
         outer = Win98Frame(self)
         outer.pack(padx=14, pady=14, fill="both", expand=True)
         TitleBar(outer, "pipeonjoy — before you start").pack(fill="x")
 
-        inner = tk.Frame(outer, bg=C["window"], padx=30, pady=22)
-        inner.pack(fill="both", expand=True)
+        # scrollable canvas so the full splash fits on any screen height
+        canvas = tk.Canvas(outer, bg=C["window"], highlightthickness=0)
+        sb     = tk.Scrollbar(outer, orient="vertical", command=canvas.yview)
+        canvas.configure(yscrollcommand=sb.set)
+        sb.pack(side="right", fill="y")
+        canvas.pack(side="left", fill="both", expand=True)
+
+        inner = tk.Frame(canvas, bg=C["window"], padx=28, pady=18)
+        win_id = canvas.create_window((0, 0), window=inner, anchor="nw")
+        inner.bind("<Configure>", lambda e: canvas.configure(
+            scrollregion=canvas.bbox("all")))
+        canvas.bind("<Configure>", lambda e: canvas.itemconfig(win_id, width=e.width))
 
         _lbl(inner, "PIPEONJOY", size=22, bold=True, color=C["value"]).pack()
-        _lbl(inner, "vaporwave composition wizard", color=C["label_dim"], size=9).pack(pady=(2, 18))
+        _lbl(inner, "vaporwave composition wizard", color=C["label_dim"], size=9).pack(pady=(2, 14))
 
-        # ── simple example ────────────────────────────────────────────────
-        box_s = tk.Frame(inner, bg="#0d1a0d", relief="sunken", bd=2, padx=12, pady=10)
-        box_s.pack(fill="x", pady=(0, 8))
-        _lbl(box_s, "SIMPLE  (albums can be this and still hit hard)",
-             bold=True, color="#44ff88", size=10).pack(anchor="w")
-        for line in [
-            "Key: E minor  •  Time: 4/4  •  Tempo: 120 BPM",
-            "Chord prog: i – VII – VI – VII  •  Root-lock bass",
-            "Power chord guitar  •  No polyrhythm  •  Verse → Chorus → Outro",
-            "→  think: Joy Division, Bauhaus, early Interpol",
-        ]:
-            _lbl(box_s, line, color="#99cc99", size=9).pack(anchor="w")
+        _lbl(inner, "All of these are valid starting points. Pick a tier that fits your ambition today.",
+             color=C["help_fg"], size=9).pack(anchor="w", pady=(0, 10))
 
-        # ── complex example ───────────────────────────────────────────────
-        box_c = tk.Frame(inner, bg="#1a0d0d", relief="sunken", bd=2, padx=12, pady=10)
-        box_c.pack(fill="x", pady=(0, 18))
-        _lbl(box_c, "COMPLEX  (or go here — the wizard handles it)",
-             bold=True, color=C["value"], size=10).pack(anchor="w")
-        for line in [
-            "Key: F# Phrygian Dominant  •  Time: 7/8  •  3-over-4 polyrhythm",
-            "Chromatic mediant modulation  •  Hook-style melodic bass",
-            "Byzantine double harmonic scale  •  Tape echo guitar",
-            "→  think: Gojira meets Salem meets Armenian folk",
-        ]:
-            _lbl(box_c, line, color="#cc9999", size=9).pack(anchor="w")
-
-        _lbl(inner, "Both are valid. The wizard works for both.  Good luck.",
-             color=C["title_txt"], size=11, bold=True).pack(pady=(4, 16))
+        for tier_lbl, bg, hdr_c, txt_c, albums in self._TIERS:
+            box = tk.Frame(inner, bg=bg, relief="sunken", bd=2, padx=12, pady=8)
+            box.pack(fill="x", pady=(0, 8))
+            _lbl(box, tier_lbl, bold=True, color=hdr_c, size=9).pack(anchor="w", pady=(0, 4))
+            for album in albums:
+                _lbl(box, album, color=txt_c, size=8).pack(anchor="w")
 
         _sep(inner)
+        _lbl(inner, "The wizard works for all three.  Good luck.",
+             color=C["title_txt"], size=11, bold=True).pack(pady=(0, 12))
         _btn(inner, "LET'S GO  ▶", self._build_name_screen).pack(anchor="e")
 
     # ── screens ───────────────────────────────────────────────────────────────
@@ -199,6 +232,7 @@ class PipeOnJoy(tk.Tk):
         row.pack(fill="x")
         mode_lbl = "QUICK (10 Q)" if self._quick else "FULL (45 Q)"
         _btn(row, f"MODE: {mode_lbl}", self._toggle_mode).pack(side="left")
+        _btn(row, "🎲 RANDOM", self._random_confirmed).pack(side="left", padx=6)
         _btn(row, "START  ▶", self._names_confirmed).pack(side="right")
 
     def _toggle_mode(self):
@@ -216,6 +250,19 @@ class PipeOnJoy(tk.Tk):
             messagebox.showwarning("pipeonjoy", "Both fields are required.")
             return
         self._build_lyrics_screen()
+
+    def _random_confirmed(self):
+        if not self._release_var.get().strip() or not self._song_var.get().strip():
+            messagebox.showwarning("pipeonjoy", "Fill in release and song name first.")
+            return
+        import random as _rnd
+        from wizard.steps import STEPS as _ALL
+        # seed from song name so same name always gives same random spec
+        seed = sum(ord(c) for c in self._song_var.get() + self._release_var.get())
+        rng  = _rnd.Random(seed)
+        self.answers = {s["key"]: rng.choice(s["options"]) for s in _ALL}
+        self.step_idx = 0
+        self._show_step()
 
     def _build_lyrics_screen(self):
         self._clear()
