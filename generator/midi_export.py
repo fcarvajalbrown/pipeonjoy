@@ -9,7 +9,7 @@ from audio.engine import (
 CH_DRUMS  = 9
 CH_BASS   = 1
 CH_CHORDS = 0
-CH_PAD    = 2
+CH_GTR    = 2
 TICKS     = 480  # ticks per beat
 
 
@@ -159,6 +159,41 @@ def build_midi(answers: dict, out_path: Path) -> Path:
                            (bt+dur, chord_root+s, 0, 0)]
 
     _write_abs_msgs(t_chords, chord_msgs, CH_CHORDS)
+
+    # ── guitar ─────────────────────────────────────────────────────────────
+    gtr_lbl = answers.get("guitar_texture", "")
+    if "None" not in gtr_lbl:
+        t_gtr = MidiTrack()
+        mid.tracks.append(t_gtr)
+        t_gtr.append(MetaMessage("track_name", name="guitar", time=0))
+        gtr_prog = GM["distort"] if "Arpeggi" not in gtr_lbl else GM["guitar_cl"]
+        if "Heavy" in gtr_lbl:
+            gtr_prog = GM["guitar_harm"]
+        t_gtr.append(Message("program_change", channel=CH_GTR, program=gtr_prog, time=0))
+
+        gtr_root = root + 24
+        gtr_msgs: list[tuple[int, int, int, int]] = []
+        for bar_i in range(total_bars):
+            chord_ivs = chord_prog[bar_i % len(chord_prog)]
+            bt = bar_i * beats_per_bar * beat_ticks
+            if "Arpeggi" in gtr_lbl:
+                for i, s in enumerate([0, chord_ivs[1], chord_ivs[2],
+                                        12, chord_ivs[2], chord_ivs[1]]):
+                    t = bt + i * beat_ticks // 2
+                    n = gtr_root + chord_ivs[0] + s
+                    gtr_msgs += [(t, n, vel-5, 1), (t + beat_ticks//2 - 10, n, 0, 0)]
+            elif "Power" in gtr_lbl or "Heavy" in gtr_lbl:
+                for s in [0, 7, 12]:
+                    n = gtr_root + chord_ivs[0] + s
+                    gtr_msgs += [(bt, n, vel, 1),
+                                 (bt + beats_per_bar * beat_ticks - 20, n, 0, 0)]
+            else:  # angular stabs on beats 1 and 3
+                for beat_n in [0, 2]:
+                    t = bt + beat_n * beat_ticks
+                    n = gtr_root + chord_ivs[0]
+                    gtr_msgs += [(t, n, vel-5, 1), (t + beat_ticks//2, n, 0, 0)]
+
+        _write_abs_msgs(t_gtr, gtr_msgs, CH_GTR)
 
     mid.save(str(mid_file))
     return mid_file

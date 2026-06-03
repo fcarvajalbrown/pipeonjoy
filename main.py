@@ -6,6 +6,8 @@ import tkinter as tk
 from tkinter import messagebox
 from pathlib import Path
 
+import numpy as np
+
 # ── frozen-bundle path resolution (must run before any other import) ──────────
 def _bundle_dir() -> Path:
     """Return the directory that contains bundled assets at runtime."""
@@ -488,9 +490,10 @@ class PipeOnJoy(tk.Tk):
         self._export_status = tk.StringVar(value="")
         tk.Label(btn_row, textvariable=self._export_status,
                  bg=C["window"], fg=C["warn"], font=FK).pack(side="left", padx=10)
-        _btn(btn_row, "EXPORT MIDI + WAV", lambda: self._export(out_folder)).pack(side="right")
+        _btn(btn_row, "EXPORT + OPEN MIXER ▶",
+             lambda: self._export_then_mix(out_folder)).pack(side="right")
 
-    def _export(self, out_folder: Path):
+    def _export_then_mix(self, out_folder: Path):
         self._export_status.set("generating MIDI…")
         self.update_idletasks()
 
@@ -498,15 +501,209 @@ class PipeOnJoy(tk.Tk):
             try:
                 from generator.midi_export import build_midi
                 from generator.wav_render  import render_wav
+                from generator.stems       import render_stems
+
                 mid = build_midi(self.answers, out_folder)
-                self.after(0, lambda: self._export_status.set("rendering WAV…"))
-                wav = render_wav(mid, out_folder)
-                msg = f"✓ {mid.name}" + (f"  +  {wav.name}" if wav else "  (WAV needs FluidSynth)")
+                self.after(0, lambda: self._export_status.set("rendering stems…"))
+                render_wav(mid, out_folder)
+                stems_dir = out_folder / "stems"
+                stems = render_stems(mid, stems_dir)
+                self.after(0, lambda: self._show_mixer(out_folder, mid, stems))
             except Exception as e:
-                msg = f"export error: {e}"
-            self.after(0, lambda: self._export_status.set(msg))
+                self.after(0, lambda: self._export_status.set(f"export error: {e}"))
 
         threading.Thread(target=_run, daemon=True).start()
+
+    # ── mixer ─────────────────────────────────────────────────────────────────
+
+    def _show_mixer(self, out_folder: Path, mid_path: Path,
+                    stems: dict) -> None:
+        from audio.engine import stop
+        stop()
+
+        self._clear()
+        outer = Win98Frame(self)
+        outer.pack(padx=14, pady=14, fill="both", expand=True)
+        TitleBar(outer, "pipeonjoy — mixer").pack(fill="x")
+
+        inner = tk.Frame(outer, bg=C["window"], padx=20, pady=16)
+        inner.pack(fill="both", expand=True)
+
+        _lbl(inner, "MIXER", size=14, bold=True, color=C["value"]).pack(anchor="w")
+        _lbl(inner, str(out_folder), color=C["path"], size=8).pack(anchor="w", pady=(2, 10))
+
+        if not stems:
+            _lbl(inner, "No stems rendered — FluidSynth required for mixer.",
+                 color=C["warn"]).pack(anchor="w")
+        else:
+            # ── faders ────────────────────────────────────────────────────
+            TRACK_ORDER = ["drums", "bass", "guitar", "chords"]
+            tracks = [t for t in TRACK_ORDER if t in stems]
+            tracks += [t for t in stems if t not in TRACK_ORDER]
+
+            self._stem_levels  = {t: tk.IntVar(value=100) for t in tracks}
+            self._stem_muted   = {t: tk.BooleanVar(value=False) for t in tracks}
+            self._master_level = tk.IntVar(value=100)
+
+            fader_row = tk.Frame(inner, bg=C["window"])
+            fader_row.pack(fill="x", pady=(0, 8))
+
+            TRACK_COLORS = {
+                "drums":  "#ff77cc", "bass":   "#00ffcc",
+                "guitar": "#ffaa44", "chords": "#b967ff",
+            }
+
+            for col, name in enumerate(tracks):
+                col_frame = tk.Frame(fader_row, bg=C["window"], padx=6)
+                col_frame.grid(row=0, column=col, sticky="n")
+
+                color = TRACK_COLORS.get(name, C["label"])
+                tk.Label(col_frame, text=name.upper(), bg=C["window"], fg=color,
+                         font=("Courier New", 9, "bold")).pack()
+
+                tk.Scale(
+                    col_frame, variable=self._stem_levels[name],
+                    from_=150, to=0, orient=tk.VERTICAL,
+                    length=140, width=18, showvalue=True,
+                    bg=C["window"], fg=color, troughcolor=C["entry_bg"],
+                    highlightthickness=0, font=("Courier New", 8),
+                    command=lambda *_: None,
+                ).pack(pady=4)
+
+                tk.Checkbutton(
+                    col_frame, text="MUTE", variable=self._stem_muted[name],
+                    bg=C["window"], fg=C["label_dim"],
+                    selectcolor=C["entry_bg"], activebackground=C["window"],
+                    font=("Courier New", 8),
+                ).pack()
+
+            # master fader
+            master_frame = tk.Frame(fader_row, bg=C["window"], padx=12)
+            master_frame.grid(row=0, column=len(tracks), sticky="n",
+                              padx=(12, 0))
+            tk.Label(master_frame, text="MASTER", bg=C["window"], fg=C["title_txt"],
+                     font=("Courier New", 9, "bold")).pack()
+            tk.Scale(
+                master_frame, variable=self._master_level,
+                from_=150, to=0, orient=tk.VERTICAL,
+                length=140, width=18, showvalue=True,
+                bg=C["window"], fg=C["title_txt"], troughcolor=C["entry_bg"],
+                highlightthickness=0, font=("Courier New", 8),
+            ).pack(pady=4)
+
+            _sep(inner)
+
+            # ── transport + re-render ─────────────────────────────────────
+            self._mixer_status = tk.StringVar(value="")
+            ctrl = tk.Frame(inner, bg=C["window"])
+            ctrl.pack(fill="x")
+            _btn(ctrl, "▶ PLAY",  lambda: self._mixer_play(stems)).pack(side="left")
+            _btn(ctrl, "■ STOP",  self._mixer_stop).pack(side="left", padx=4)
+            _btn(ctrl, "RE-RENDER WAV",
+                 lambda: self._mixer_render(stems, out_folder)).pack(side="left", padx=4)
+            tk.Label(ctrl, textvariable=self._mixer_status,
+                     bg=C["window"], fg=C["warn"], font=FK).pack(side="left", padx=8)
+
+        _sep(inner)
+        btn_row = tk.Frame(inner, bg=C["window"])
+        btn_row.pack(fill="x")
+        _btn(btn_row, "◀ BACK TO SUMMARY",
+             lambda: self._finish_from_mixer(out_folder)).pack(side="left")
+        _btn(btn_row, "▶ NEW SONG", self._restart).pack(side="right")
+
+    def _mixer_play(self, stems: dict):
+        import sounddevice as sd
+        self._mixer_stop()
+        levels  = {n: self._stem_levels[n].get() / 100 for n in stems}
+        muted   = {n: self._stem_muted[n].get()        for n in stems}
+        master  = self._master_level.get() / 100
+
+        if not stems:
+            return
+
+        max_len = max(len(a) for a in stems.values())
+        mixed = np.zeros(max_len, dtype=np.float32)
+        for name, arr in stems.items():
+            if not muted.get(name, False):
+                mixed[: len(arr)] += arr * levels[name]
+        mixed *= master
+        np.clip(mixed, -1.0, 1.0, out=mixed)
+
+        self._mixer_status.set("▶ playing…")
+        self._mixer_playing = True
+
+        def _run():
+            try:
+                sd.play(mixed, samplerate=44100)
+                sd.wait()
+            except Exception:
+                pass
+            self.after(0, lambda: self._mixer_status.set(""))
+
+        threading.Thread(target=_run, daemon=True).start()
+
+    def _mixer_stop(self):
+        try:
+            import sounddevice as sd
+            sd.stop()
+        except Exception:
+            pass
+        self._mixer_status.set("")
+
+    def _mixer_render(self, stems: dict, out_folder: Path):
+        from generator.stems import mix_to_wav
+        levels = {n: self._stem_levels[n].get() / 100 for n in stems}
+        muted  = {n: self._stem_muted[n].get()        for n in stems}
+        master = self._master_level.get() / 100
+        out    = out_folder / "sketch_mix.wav"
+        self._mixer_status.set("rendering…")
+        self.update_idletasks()
+
+        def _run():
+            try:
+                mix_to_wav(stems, levels, muted, master, out)
+                self.after(0, lambda: self._mixer_status.set(f"✓ {out.name}"))
+            except Exception as e:
+                self.after(0, lambda: self._mixer_status.set(f"error: {e}"))
+
+        threading.Thread(target=_run, daemon=True).start()
+
+    def _finish_from_mixer(self, out_folder: Path):
+        self._mixer_stop()
+        self._finish_direct(out_folder)
+
+    def _finish_direct(self, out_folder: Path):
+        """Rebuild the finish screen for a known out_folder (back from mixer)."""
+        self._clear()
+        outer = Win98Frame(self)
+        outer.pack(padx=14, pady=14, fill="both", expand=True)
+        TitleBar(outer, "pipeonjoy — spec complete").pack(fill="x")
+
+        inner = tk.Frame(outer, bg=C["window"], padx=28, pady=20)
+        inner.pack(fill="both", expand=True)
+
+        _lbl(inner, "▌ SONG SPEC LOCKED", size=14, bold=True, color=C["value"]).pack(anchor="w")
+        _lbl(inner, f"output → {out_folder}", color=C["path"], size=9).pack(anchor="w", pady=(4, 0))
+        _sep(inner)
+
+        box = tk.Frame(inner, bg=C["entry_bg"], relief="sunken", bd=2, padx=10, pady=8)
+        box.pack(fill="x")
+        sb = tk.Scrollbar(box)
+        sb.pack(side="right", fill="y")
+        lb = tk.Listbox(box, bg=C["entry_bg"], fg=C["label"], font=FK,
+                        yscrollcommand=sb.set, relief="flat", height=12,
+                        selectbackground=C["chrome"])
+        lb.pack(side="left", fill="both", expand=True)
+        sb.config(command=lb.yview)
+        for k, v in self.answers.items():
+            lb.insert("end", f"  {k:<22} {v}")
+
+        _sep(inner)
+        row = tk.Frame(inner, bg=C["window"])
+        row.pack(fill="x")
+        _btn(row, "▶ NEW SONG", self._restart).pack(side="left")
+        _btn(row, "OPEN MIXER ▶",
+             lambda: self._export_then_mix(out_folder)).pack(side="right")
 
     def _restart(self):
         self.answers  = {}
