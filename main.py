@@ -1,6 +1,7 @@
 """pipeonjoy — vaporwave composition wizard."""
 import os
 import sys
+import threading
 import tkinter as tk
 from tkinter import messagebox
 from pathlib import Path
@@ -8,6 +9,9 @@ from pathlib import Path
 from wizard.release import create_output_folder, suggest_track_count
 from wizard.sample_analysis import launch_sample_tool
 from wizard.steps import STEPS, QUICK_KEYS
+
+# help macOS find the Homebrew FluidSynth dylib
+os.environ.setdefault("DYLD_LIBRARY_PATH", "/opt/homebrew/lib")
 
 # ── single-instance lock ──────────────────────────────────────────────────────
 LOCKFILE = Path(os.environ.get("TMPDIR", "/tmp")) / "pipeonjoy.lock"
@@ -108,7 +112,7 @@ class PipeOnJoy(tk.Tk):
         super().__init__()
         self.title("pipeonjoy")
         self.configure(bg=C["desktop"])
-        self.minsize(520, 580)
+        self.minsize(600, 680)
         self.resizable(True, True)
         self.protocol("WM_DELETE_WINDOW", self._on_close)
 
@@ -125,7 +129,53 @@ class PipeOnJoy(tk.Tk):
         self._song_var    = tk.StringVar()
         self._choice_var: tk.StringVar | None = None
 
-        self._build_name_screen()
+        self._build_splash()
+
+    # ── splash ────────────────────────────────────────────────────────────────
+
+    def _build_splash(self):
+        self._clear()
+        outer = Win98Frame(self)
+        outer.pack(padx=14, pady=14, fill="both", expand=True)
+        TitleBar(outer, "pipeonjoy — before you start").pack(fill="x")
+
+        inner = tk.Frame(outer, bg=C["window"], padx=30, pady=22)
+        inner.pack(fill="both", expand=True)
+
+        _lbl(inner, "PIPEONJOY", size=22, bold=True, color=C["value"]).pack()
+        _lbl(inner, "vaporwave composition wizard", color=C["label_dim"], size=9).pack(pady=(2, 18))
+
+        # ── simple example ────────────────────────────────────────────────
+        box_s = tk.Frame(inner, bg="#0d1a0d", relief="sunken", bd=2, padx=12, pady=10)
+        box_s.pack(fill="x", pady=(0, 8))
+        _lbl(box_s, "SIMPLE  (albums can be this and still hit hard)",
+             bold=True, color="#44ff88", size=10).pack(anchor="w")
+        for line in [
+            "Key: E minor  •  Time: 4/4  •  Tempo: 120 BPM",
+            "Chord prog: i – VII – VI – VII  •  Root-lock bass",
+            "Power chord guitar  •  No polyrhythm  •  Verse → Chorus → Outro",
+            "→  think: Joy Division, Bauhaus, early Interpol",
+        ]:
+            _lbl(box_s, line, color="#99cc99", size=9).pack(anchor="w")
+
+        # ── complex example ───────────────────────────────────────────────
+        box_c = tk.Frame(inner, bg="#1a0d0d", relief="sunken", bd=2, padx=12, pady=10)
+        box_c.pack(fill="x", pady=(0, 18))
+        _lbl(box_c, "COMPLEX  (or go here — the wizard handles it)",
+             bold=True, color=C["value"], size=10).pack(anchor="w")
+        for line in [
+            "Key: F# Phrygian Dominant  •  Time: 7/8  •  3-over-4 polyrhythm",
+            "Chromatic mediant modulation  •  Hook-style melodic bass",
+            "Byzantine double harmonic scale  •  Tape echo guitar",
+            "→  think: Gojira meets Salem meets Armenian folk",
+        ]:
+            _lbl(box_c, line, color="#cc9999", size=9).pack(anchor="w")
+
+        _lbl(inner, "Both are valid. The wizard works for both.  Good luck.",
+             color=C["title_txt"], size=11, bold=True).pack(pady=(4, 16))
+
+        _sep(inner)
+        _btn(inner, "LET'S GO  ▶", self._build_name_screen).pack(anchor="e")
 
     # ── screens ───────────────────────────────────────────────────────────────
 
@@ -364,7 +414,32 @@ class PipeOnJoy(tk.Tk):
             lb.insert("end", f"  {k:<22} {v}")
 
         _sep(inner)
-        _btn(inner, "▶ NEW SONG", self._restart).pack(anchor="e")
+
+        btn_row = tk.Frame(inner, bg=C["window"])
+        btn_row.pack(fill="x")
+        _btn(btn_row, "▶ NEW SONG", self._restart).pack(side="left")
+        self._export_status = tk.StringVar(value="")
+        tk.Label(btn_row, textvariable=self._export_status,
+                 bg=C["window"], fg=C["warn"], font=FK).pack(side="left", padx=10)
+        _btn(btn_row, "EXPORT MIDI + WAV", lambda: self._export(out_folder)).pack(side="right")
+
+    def _export(self, out_folder: Path):
+        self._export_status.set("generating MIDI…")
+        self.update_idletasks()
+
+        def _run():
+            try:
+                from generator.midi_export import build_midi
+                from generator.wav_render  import render_wav
+                mid = build_midi(self.answers, out_folder)
+                self.after(0, lambda: self._export_status.set("rendering WAV…"))
+                wav = render_wav(mid, out_folder)
+                msg = f"✓ {mid.name}" + (f"  +  {wav.name}" if wav else "  (WAV needs FluidSynth)")
+            except Exception as e:
+                msg = f"export error: {e}"
+            self.after(0, lambda: self._export_status.set(msg))
+
+        threading.Thread(target=_run, daemon=True).start()
 
     def _restart(self):
         self.answers  = {}
