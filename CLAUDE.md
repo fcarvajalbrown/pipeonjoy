@@ -2,6 +2,12 @@
 
 Guidance for Claude Code when working in this repo.
 
+## Architecture decisions
+
+All significant product and technical decisions are recorded in [`docs/decisions.md`](docs/decisions.md).
+Read it before proposing changes that touch platform targets, audio engine, MIDI routing, distribution, or monetization.
+When a decision changes, update that file — do not leave it stale.
+
 ## Identity
 
 - **Author:** Felipe Carvajal Brown
